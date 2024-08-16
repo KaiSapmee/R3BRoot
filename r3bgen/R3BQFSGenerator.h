@@ -76,7 +76,7 @@ class R3BQFSGenerator : public FairGenerator
     void SetAddGamma(bool enable);
     std::vector<Double_t> SetGamma(double energyofGamma);
     void Print();
-    TLorentzVector SetLorentzBoost(TLorentzVector& gammaMomentum, const TLorentzVector& fragmentMomentum);
+    void SetLorentzBoost(TLorentzVector& gammaMomentum, const TLorentzVector& fragmentMomentum);
   protected:
     /**
      * Set Values for target end beam nucleus, Cross section and kinematics

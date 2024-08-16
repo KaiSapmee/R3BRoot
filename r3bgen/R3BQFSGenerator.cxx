@@ -110,7 +110,7 @@ void R3BQFSGenerator::SetLightNucleus(double ma, double mi)
 
 void R3BQFSGenerator::SetExcitation(double exe)
 {
-	MB += exe;
+	MB += exe/1000.;
 	return;
 }
 
@@ -136,10 +136,11 @@ void R3BQFSGenerator::SetMomDistrib(double mom)
 std::vector<Double_t> R3BQFSGenerator::SetGamma(double energyofGamma)
 {
 	GammaEnergy = energyofGamma;
+//	cout << "energyofGamma  " << GammaEnergy << endl; 
 	Double_t phi = fRandom.Uniform(0.,2.*TMath::Pi());
 	Double_t costheta = fRandom.Uniform(-1,1);
 	Double_t theta = TMath::ACos(costheta);
-	Double_t energy = energyofGamma;
+	Double_t energy = GammaEnergy ;
 	Double_t px =energy * TMath::Sin(theta)*TMath::Cos(phi);
 	Double_t py =energy * TMath::Sin(theta)*TMath::Sin(phi);
 	Double_t pz =energy * TMath::Cos(theta);
@@ -147,12 +148,11 @@ std::vector<Double_t> R3BQFSGenerator::SetGamma(double energyofGamma)
 	return {px, py, pz, energy};
 }
 
-TLorentzVector R3BQFSGenerator::SetLorentzBoost(TLorentzVector& gammaMomentum, const TLorentzVector& fragmentMomentum)
+void R3BQFSGenerator::SetLorentzBoost(TLorentzVector& gammaMomentum, const TLorentzVector& fragmentMomentum)
 {
 	TVector3 boostVector = fragmentMomentum.BoostVector();
 	gammaMomentum.Boost(boostVector);
-
-	return gammaMomentum;
+	return;
 
 }
 
@@ -208,8 +208,10 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 	TLorentzVector LVi; // Proton Beam 
 	TLorentzVector* LVg = nullptr; // For Gamma
 
-	double gA, gi;
-	double bA, bi;
+	double* gA = nullptr;
+	double gi;
+	double* bA = nullptr;
+	double bi;
 	double PA, Pi;
 	double EA, Ei;
 	double S_first;
@@ -220,19 +222,19 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 		//--------------------- Beam parameters -----------------------------
 		PA = sqrt(Tkin * (Tkin + 2 * MA));         // Total 3-momentum of the beam
 		EA = sqrt(MA * MA + PA * PA);              // Total energy of the beam
-		bA = -PA / EA;                             // Beta of the beam
-		gA = 1 / sqrt(1 - bA * bA);                // Gamma of the beam
+		bA = new double(-PA / EA);                             // Beta of the beam
+		gA = new double(1/TMath::Sqrt(1-*bA* *bA));                // Gamma of the beam
 		S_first = (EA + Mi) * (EA + Mi) - PA * PA; // Invariant mass (Mandelstam S-variable)
 		//	TLorentzVector LVa; // Proton Target
 		//	TLorentzVector LVi; // Beam
-		LVi.SetPxPyPzE(0., 0.,0., Mi); //Target
+		LVi.SetPxPyPzE(0., 0.,0.,Mi); //Lorentz Vector of the Beam
 		//	TLorentzVector* LVg = nullptr; // For Gamma
 
 		LOG(debug) << "\n****** Beam Parameters for Inverse Kinematics ********";
 		LOG(debug) << "\nMA:\t" << MA << " MeV";
 		LOG(debug) << "\nTotal momentum:\t" << PA << " MeV";
 		LOG(debug) << "\nTotal energy:\t" << EA << " MeV";
-		LOG(debug) << "\nBeta (beam):\t" << (-bA) << "\nGamma (beam):\t" << gA << "\n\n";
+		LOG(debug) << "\nBeta (beam):\t" << (-*bA) << "\nGamma (beam):\t" << *gA << "\n\n";
 	}
 
 	else //For Direct Kinematics
@@ -246,7 +248,7 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 
 		//	TLorentzVector LVa; // Target
 		//	TLorentzVector LVi; // Proton Beam 
-		LVi.SetPxPyPzE(0.,0.,Pi, Ei); //?????????????????????Confusion on LVi???????????????????????????
+		LVi.SetPxPyPzE(0.,0.,Pi, Ei); //of the Bram
 
 		//	TLorentzVector* LVg = nullptr; //For Gamma Radition from the fragment
 
@@ -296,20 +298,22 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 		if(INVERSE)
 		{
 			//------- Lorentz transformations into laboratory system ---------
-			std::pair<double, double> lora = R3BQFSGenerator::Lorentz(gA, bA, EaL, Pa.Z());
+			std::pair<double, double> lora = R3BQFSGenerator::Lorentz(*gA,*bA, EaL, Pa.Z());
 			EaL = lora.first; // cluster energy in lab
 			Pa.SetZ(lora.second);    // cluster Pz in lab
 		//	LVa.SetPxPyPzE(Pa.X(), Pa.Y(), Pa.Z(), EaLL); //<<<<<<<<<<<<<<<<<<<<<<<<<<		
 
-			std::pair<double, double> lorB = R3BQFSGenerator::Lorentz(gA, bA, EBL, PB.Z());
+			std::pair<double, double> lorB = R3BQFSGenerator::Lorentz(*gA, *bA, EBL, PB.Z());
 			EBL = lorB.first; // energy of the residual B in lab
 			PB.SetZ(lorB.second);    // Pz of the residual B in lab
+			
 		}
 
 		/////////////////////////////////////////08.08.2024////////////////////////////////////////
 		// Gamma radition from fragment
 		if(AddGamma)
 		{		
+//			cout << "Gamma Energy Check:  " << GammaEnergy << endl;
 			std::vector<Double_t> Gamma_vec = SetGamma(GammaEnergy);
 			LVg = new TLorentzVector(Gamma_vec[0], Gamma_vec[1], Gamma_vec[2], Gamma_vec[3]);
 		}
@@ -392,11 +396,12 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 		if(AddGamma && LVg!= nullptr  )
 		{
 			TLorentzVector LVfragment;
-			LVfragment.SetPxPyPzE(PB.Px()/1000.,PB.Py()/1000., PB.Pz()/1000., TotalEnergy/1000.);
-			TLorentzVector gammaLabframe = SetLorentzBoost(*LVg, LVfragment);		
-
+			LVfragment.SetPxPyPzE(PB.Px(),PB.Py(), PB.Pz(), TotalEnergy);
+		//	TLorentzVector gammaLabframe;
+			SetLorentzBoost(*LVg, LVfragment);		
+			
 			//	primGen->AddTrack(22,Gamma_vec[0], Gamma_vec[1], Gamma_vec[2], 0., 0., 0., -1, true, Gamma_vec[3]); 
-			primGen->AddTrack(22, gammaLabframe.Px(), gammaLabframe.Py(), gammaLabframe.Pz(),0.,0.,0., -1, true, gammaLabframe.E());
+			primGen->AddTrack(22, LVg->Px()/1000., LVg->Py()/1000., LVg->Pz()/1000.,0.,0.,0., -1, true, LVg->E());
 		}
 
 		//Clearing Memories
@@ -406,6 +411,10 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 			delete LVg;
 			LVg = nullptr;
 		}
+		
+		delete gA;
+		delete bA;
+
 		//////////////////////////////Kai's Modification//////////////////////////
 		//--------- Filling in the ROOTTree variables------------
 	}
@@ -420,8 +429,9 @@ void R3BQFSGenerator::SetValues(double E, int A, double MOM, double exe, double 
 	MOM_SIGMA = MOM;
 	A_BEAM = A;
 	double UNIT = 931.494061;
-	MA = A * UNIT;
-	MB = (A - 1) * UNIT + exe;
+//	MA = A * UNIT;
+	MB =(A - 1) * UNIT + exe;
+//	MB = (A - 1) * UNIT;
 	Ma = 938.727;
 	Mi = 938.727;
 	T_LIMIT = 10000000.;
