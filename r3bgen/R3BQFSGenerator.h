@@ -73,8 +73,8 @@ class R3BQFSGenerator : public FairGenerator
     void SetMomDistrib(double mom);             // Set Sigma of momentum distribution
     void SetExcitation(double exe);             // Set Excitation energy
     void SetLightNucleus(double ma, double mi); // Set Incoming outgoing particle mass
-    void SetAddGamma(bool enable);
-    std::vector<Double_t> SetGamma(double energyofGamma);
+    void SetAddGamma(double energy);
+    std::vector<Double_t> GetGamma();
     void Print();
     void SetLorentzBoost(TLorentzVector& gammaMomentum, const TLorentzVector& fragmentMomentum);
   protected:

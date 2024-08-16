@@ -72,9 +72,11 @@ Bool_t R3BQFSGenerator::Init()
 
 /////THE OLD CODE/////
 
-void R3BQFSGenerator::SetAddGamma(bool enable)
+void R3BQFSGenerator::SetAddGamma(double energy)
 {
-	AddGamma = enable;
+	AddGamma = true;
+	GammaEnergy = energy;
+	SetExcitation(GammaEnergy);
 	return;
 }
 
@@ -133,13 +135,13 @@ void R3BQFSGenerator::SetMomDistrib(double mom)
 
 /////////////////////////////////////////////08.08.2024////////////////////////////////////////////////
 //Create Gamma Emission in the cm frame
-std::vector<Double_t> R3BQFSGenerator::SetGamma(double energyofGamma)
+std::vector<Double_t> R3BQFSGenerator::GetGamma()
 {
-	GammaEnergy = energyofGamma;
 //	cout << "energyofGamma  " << GammaEnergy << endl; 
 	Double_t phi = fRandom.Uniform(0.,2.*TMath::Pi());
 	Double_t costheta = fRandom.Uniform(-1,1);
 	Double_t theta = TMath::ACos(costheta);
+
 	Double_t energy = GammaEnergy ;
 	Double_t px =energy * TMath::Sin(theta)*TMath::Cos(phi);
 	Double_t py =energy * TMath::Sin(theta)*TMath::Sin(phi);
@@ -314,7 +316,7 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 		if(AddGamma)
 		{		
 //			cout << "Gamma Energy Check:  " << GammaEnergy << endl;
-			std::vector<Double_t> Gamma_vec = SetGamma(GammaEnergy);
+			std::vector<Double_t> Gamma_vec = GetGamma();
 			LVg = new TLorentzVector(Gamma_vec[0], Gamma_vec[1], Gamma_vec[2], Gamma_vec[3]);
 		}
 		/////////////////////////////////////////08.08.2024/////////////////////////////////////////
