@@ -88,7 +88,7 @@ class R3BQFSGenerator : public FairGenerator
     double Ma;
     double GammaEnergy;
     double Mi;
-    double T_LIMIT;
+ //   double T_LIMIT;
     double MOM_SIGMA;
     bool ISOTROPIC;
     bool INVERSE; 
@@ -100,6 +100,7 @@ class R3BQFSGenerator : public FairGenerator
     CM_values CENMASS(double, double, double, double, bool);
     double momentum_CM(double, double, double);
     double get_T(double, double);
+    double get_T_Cugnon(double, double);
     std::pair<double, double> Lorentz(double, double, double, double);
     void SetValues(double E, int A, double MOM, double exe, double gammaenergy, bool invert, bool iso, bool gamma);
     FairIon* fIonBeam; // Pointer to the FairIon

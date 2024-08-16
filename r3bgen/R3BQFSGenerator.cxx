@@ -44,7 +44,7 @@ using namespace std;
 R3BQFSGenerator::R3BQFSGenerator()
 {
 	this->SetValues(0, 0, 0, 0, 0, false, false, false);
-	T_LIMIT = 10000000.;
+//	T_LIMIT = 10000000.;
 	fRandom.SetSeed(0);
 	//    GammaEnergy = 0;
 	cout<<"\n ##Starting QFS Gen##"<<endl;
@@ -173,7 +173,7 @@ void R3BQFSGenerator::Print()
 	cout << "Mass B: \t" << MB << endl;
 	cout << "Mass a: \t" << Ma << endl;
 	cout << "Mass i: \t" << Mi << endl;
-	cout << "T_Limit: \t" << T_LIMIT << endl;
+//	cout << "T_Limit: \t" << T_LIMIT << endl;
 	cout << "Sigma Fermi: \t" << MOM_SIGMA << endl;
 	cout << "WQ Isotropic: \t" << ISOTROPIC << endl;
 	cout << "Inverse kinematics: \t" << INVERSE << endl;
@@ -436,7 +436,7 @@ void R3BQFSGenerator::SetValues(double E, int A, double MOM, double exe, double 
 //	MB = (A - 1) * UNIT;
 	Ma = 938.727;
 	Mi = 938.727;
-	T_LIMIT = 10000000.;
+//	T_LIMIT = 10000000.;
 	INVERSE = invert;
 	ISOTROPIC = iso;
 	AddGamma = gamma;
@@ -515,11 +515,11 @@ CM_values R3BQFSGenerator::CENMASS(double s, double m2off, double m1, double m2,
 	// Generate random momentum transfer for this kinematical case
 	if (!isotropic)
 	{
-		t = R3BQFSGenerator::get_T(s, tmax);
+		t = R3BQFSGenerator::get_T_Cugnon(s, tmax);
 	} // Using parameterized cross sections
 	else
 	{
-		t = fRandom.Uniform(0., T_LIMIT) * (-1);
+		t = fRandom.Uniform(tmax, 0);
 	} // Isotropic scattering
 
 	// double COSINE = (t - m2off*m2off - m2*m2 + 2*e2_off*e2)/(2*p2_off*p2);
@@ -603,6 +603,49 @@ double R3BQFSGenerator::get_T(double sm, double max)
 		Trand = Tmax - Trand; // symmetrization relative to 90 degrees
 	// cout << "\n Tmax/2 = " << Tmax/2 *  1000000;
 	// cout << "\n Random T = " << Trand*1000000;
+	delete foo;
+	return (Trand * 1000000); // returning value in MeV�
+}
+
+double R3BQFSGenerator::get_T_Cugnon(double sm, double max)
+{
+	double Tmax = max * 0.000001; // convert to GeV� units
+	// double Tmin = min*0.000001;
+
+
+	Double_t rr = fRandom.Uniform(-1., 1.); // to randomize wrt 90 degrees
+	double mandels = sm * 0.000001;         // in GeV�
+	// cout << "\nMandelstam S = " << mandels << "\t Tmax/2 = " << Tmax/2 << "\t Random: " << rr;
+	Double_t beamMass;
+	Double_t targetMass;
+	if(INVERSE)
+	{
+		beamMass = MA;
+		targetMass = Mi;
+	}
+	else
+	{
+		beamMass = Mi;
+		targetMass = MA;
+	}
+	// Probability function from the parameterization
+	Double_t Bpp;
+	Double_t p_lab =(1./(4*targetMass)*(mandels - pow(beamMass+targetMass,2))*(mandels- pow(beamMass-targetMass,2))); //Convert p_lab into Mandelstam mandels
+	TF1* foo = new TF1("foo", "exp(x*[0])", Tmax, 0);
+	
+	Double_t p8 = pow(p_lab,8);
+	if(p_lab >= 2)
+	{
+		Bpp = 5.334+0.67*(p_lab-2);
+	}
+	else
+	{
+	        Bpp =(5.5*p8)/(7.7+p8);
+	}
+
+	foo->FixParameter(0, Bpp); //We just want to set the parameter [0], to be Bpp here
+
+	double Trand = foo->GetRandom(Tmax, 0.); //This is the Inverse Transform sampling method, we will random t that satisfies the above expression. 
 	delete foo;
 	return (Trand * 1000000); // returning value in MeV�
 }
