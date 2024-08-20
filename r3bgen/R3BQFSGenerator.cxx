@@ -615,7 +615,7 @@ double R3BQFSGenerator::get_T_Cugnon(double sm, double max)
 
 	Double_t rr = fRandom.Uniform(-1., 1.); // to randomize wrt 90 degrees
 	double mandels = sm * 0.000001;         // in GeV�
-	// cout << "\nMandelstam S = " << mandels << "\t Tmax/2 = " << Tmax/2 << "\t Random: " << rr;
+	cout << "\nMandelstam S = " << mandels << "\t Tmax/2 = " << Tmax/2 << "\t Random: " << rr;
 	Double_t beamMass;
 	Double_t targetMass;
 	if(INVERSE)
@@ -628,10 +628,30 @@ double R3BQFSGenerator::get_T_Cugnon(double sm, double max)
 		beamMass = Mi;
 		targetMass = MA;
 	}
+	//Converting Mass Unit
+	beamMass /= 1000.;
+	targetMass /= 1000.;
+	cout << "\nBeam Mass: " << beamMass << "\t Target Mass: " << targetMass << endl;
 	// Probability function from the parameterization
 	Double_t Bpp;
-	Double_t p_lab =(1./(4*targetMass)*(mandels - pow(beamMass+targetMass,2))*(mandels- pow(beamMass-targetMass,2))); //Convert p_lab into Mandelstam mandels
-	TF1* foo = new TF1("foo", "exp(x*[0])", Tmax, 0);
+	Double_t p_lab =(1./(2*targetMass))*TMath::Sqrt((mandels - pow(beamMass+targetMass,2))*(mandels- pow(beamMass-targetMass,2))); //Convert p_lab into Mandelstam mandels
+//	p_lab = sqrt(fabs(p_lab)); //To ensure that the momentum is positive
+	
+	//Convert p_lab into GeV/c^2 according to the paper
+	p_lab /= 1000.;
+	double sigma;
+	if(p_lab <0.8)
+	{
+		sigma = 33+196*pow(fabs(p_lab-0.95),2.5);
+	}
+	else if(p_lab <2)
+	{
+		sigma = 31/TMath::Sqrt(p_lab);
+	}
+	else
+	{
+		sigma = 77/(p_lab+1.5);
+	}
 	
 	Double_t p8 = pow(p_lab,8);
 	if(p_lab >= 2)
@@ -642,12 +662,46 @@ double R3BQFSGenerator::get_T_Cugnon(double sm, double max)
 	{
 	        Bpp =(5.5*p8)/(7.7+p8);
 	}
+	
+	//Idea random the value of dif cross until it meets the value of the derivative cross section given in the paper
+	double t_value;
+	bool accept = false;
+	double normalization =sigma*Bpp/(-TMath::Exp(Bpp*Tmax)+1);
+	while(!accept)
+	{
+	//	cout << "\nMandelstam S = " << mandels << "\t Tmax/2 = " << Tmax/2 << "\t Random: " << rr;
+	//	cout << "\nBeam Mass: " << beamMass << "\t Target Mass: " << targetMass << endl;
+		//Generate random value of energy momentum transfer 't'
+		t_value = fRandom.Uniform(Tmax,0);
+	//	cout << "\nt: " << t_value << ", Bpp: " << Bpp << ", p_lab: " << p_lab << endl;		
+		//Calculate the differential cross section according to the paper
+		double dsigma_dt = TMath::Exp(Bpp*t_value);
+	//	cout << "\n dsigma_dt Value: " << dsigma_dt << endl;
+		double error = 0.00001*dsigma_dt;
+		double accept_prob = fRandom.Uniform(0,1);
+		
+	//	cout << "\n Random Prob is: " << accept_prob << endl;
+//		if(accept_prob <(dsigma_dt-error) &&  accept_prob > (dsigma_dt+error))
+		if(accept_prob <= dsigma_dt+error && accept_prob >= dsigma_dt-error)
+		{
+			accept = true;
+		} 
 
-	foo->FixParameter(0, Bpp); //We just want to set the parameter [0], to be Bpp here
+	}
 
-	double Trand = foo->GetRandom(Tmax, 0.); //This is the Inverse Transform sampling method, we will random t that satisfies the above expression. 
-	delete foo;
-	return (Trand * 1000000); // returning value in MeV�
+//	TF1* foo = new TF1("foo", "exp(x*[0])",0 ,Tmax);
+
+//	foo->FixParameter(0, Bpp); //We just want to set the parameter [0], to be Bpp here
+
+//	double Trand = foo->GetRandom(0,Tmax); //This is the Inverse Transform sampling method, we will random t that satisfies the above expression. 
+//	if(Trand <= 0)
+//	{
+//	std::cerr << "Error: Integral of the function is zero or negative" << std::endl;
+//	delete foo;
+//	return 0;
+//	}
+//	return (Trand * 1000000); // returning value in MeV�
+	return t_value* 1000000;
 }
 
 ClassImp(R3BQFSGenerator)
