@@ -43,7 +43,7 @@ using namespace std;
 
 R3BQFSGenerator::R3BQFSGenerator()
 {
-	this->SetValues(0, 0, 0, 0, 0, false, false, false);
+	this->SetValues(0, 0, 0, 0, 0, false, false, false, false);
 //	T_LIMIT = 10000000.;
 	fRandom.SetSeed(0);
 	//    GammaEnergy = 0;
@@ -53,6 +53,7 @@ R3BQFSGenerator::R3BQFSGenerator()
 Bool_t R3BQFSGenerator::Init()
 {
 	fRandom.SetSeed(0);
+	//foo_Cugnon_DXS = new TF1("foo_Cugnon_DXS","");
 	return kTRUE;
 }
 
@@ -380,8 +381,9 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 		LOG(debug) << "R3BQFSGenerator: Sending p2pevt: P1 : " << P1L.Px() << " , " << P1L.Py() << " , "
 			<< P1L.Pz() << "\n P2 : " << P2L.Px() << " , " << P2L.Py() << " , " << P2L.Pz() << " ";
 		primGen->AddTrack(2212, P1L.Px() / 1000., P1L.Py() / 1000., P1L.Pz() / 1000., 0, 0, 0);
+		if(!is
 		primGen->AddTrack(2212, P2L.Px() / 1000., P2L.Py() / 1000., P2L.Pz() / 1000., 0, 0, 0);
-
+		
 		TParticlePDG* thisPart = TDatabasePDG::Instance()->GetParticle(fIonFragment->GetName());
 		if (!thisPart)
 			LOG(fatal) << "FairIonGenerator: Ion " << fIonFragment->GetName() << " not found in database!";
@@ -425,7 +427,7 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 	return kTRUE;
 }
 
-void R3BQFSGenerator::SetValues(double E, int A, double MOM, double exe, double gammaenergy , bool invert, bool iso, bool gamma )
+void R3BQFSGenerator::SetValues(double E, int A, double MOM, double exe, double gammaenergy , bool invert, bool iso, bool gamma, bool is_pn)
 {
 	ENERGY = E;
 	MOM_SIGMA = MOM;
@@ -440,6 +442,7 @@ void R3BQFSGenerator::SetValues(double E, int A, double MOM, double exe, double 
 	INVERSE = invert;
 	ISOTROPIC = iso;
 	AddGamma = gamma;
+	IS_PN = is_pn;
 	GammaEnergy = gammaenergy;
 	return;
 }
@@ -515,7 +518,14 @@ CM_values R3BQFSGenerator::CENMASS(double s, double m2off, double m1, double m2,
 	// Generate random momentum transfer for this kinematical case
 	if (!isotropic)
 	{
-		t = R3BQFSGenerator::get_T_Cugnon(s, tmax);
+		if(!is_pn)
+		{
+			t = R3BQFSGenerator::get_T_Cugnon(s, tmax);
+		}
+		else
+		{
+			t = R3BQFSGenerator::gat_T_Cugnon_PN(s, tmax);
+		}
 	} // Using parameterized cross sections
 	else
 	{
@@ -600,6 +610,7 @@ double R3BQFSGenerator::get_T(double sm, double max)
 
 	double Trand = foo->GetRandom(Tmax / 2, 0.); // from 90 to 0 degrees
 	if (rr > 0)
+
 		Trand = Tmax - Trand; // symmetrization relative to 90 degrees
 	// cout << "\n Tmax/2 = " << Tmax/2 *  1000000;
 	// cout << "\n Random T = " << Trand*1000000;
@@ -613,95 +624,94 @@ double R3BQFSGenerator::get_T_Cugnon(double sm, double max)
 	// double Tmin = min*0.000001;
 
 
-	Double_t rr = fRandom.Uniform(-1., 1.); // to randomize wrt 90 degrees
+//	Double_t rr = fRandom.Uniform(-1., 1.); // to randomize wrt 90 degrees
 	double mandels = sm * 0.000001;         // in GeV�
-	cout << "\nMandelstam S = " << mandels << "\t Tmax/2 = " << Tmax/2 << "\t Random: " << rr;
-	Double_t beamMass;
-	Double_t targetMass;
-	if(INVERSE)
-	{
-		beamMass = MA;
-		targetMass = Mi;
-	}
-	else
-	{
-		beamMass = Mi;
-		targetMass = MA;
-	}
-	//Converting Mass Unit
-	beamMass /= 1000.;
-	targetMass /= 1000.;
-	cout << "\nBeam Mass: " << beamMass << "\t Target Mass: " << targetMass << endl;
+	cout << "\nMandelstam S = " << mandels << "\t Tmax= " << Tmax << endl;
+	Double_t Mp = 938.727/1000.; //Converting to GeV to fit in Cugnon Parameterization
+	cout << "\n Proton Mass:%f GeV/c^2" << Mp<< endl;
 	// Probability function from the parameterization
 	Double_t Bpp;
-	Double_t p_lab =(1./(2*targetMass))*TMath::Sqrt((mandels - pow(beamMass+targetMass,2))*(mandels- pow(beamMass-targetMass,2))); //Convert p_lab into Mandelstam mandels
-//	p_lab = sqrt(fabs(p_lab)); //To ensure that the momentum is positive
-	
-	//Convert p_lab into GeV/c^2 according to the paper
-	p_lab /= 1000.;
-	double sigma;
-	if(p_lab <0.8)
+	Double_t p_lab = TMath::Sqrt(mandels*(mandels-4*Mp*Mp))/(2*Mp); //Convert p_lab into Mandelstam mandels
+	cout << "\n Plab::" << p_lab;	
+	double pp = pow(p_lab,8);
+	if(p_lab <= 2)
 	{
-		sigma = 33+196*pow(fabs(p_lab-0.95),2.5);
-	}
-	else if(p_lab <2)
-	{
-		sigma = 31/TMath::Sqrt(p_lab);
+		Bpp =(5.5*pp)/(7.7+pp);
 	}
 	else
-	{
-		sigma = 77/(p_lab+1.5);
-	}
-	
-	Double_t p8 = pow(p_lab,8);
-	if(p_lab >= 2)
 	{
 		Bpp = 5.334+0.67*(p_lab-2);
 	}
+	cout << "\nBpp: " << Bpp << endl;
+	TF1 *foo =  new TF1("foo", "exp(x*[0])",Tmax,0);	
+	foo->FixParameter(0,Bpp);
+//	cout << "\n foo Value: " << foo << endl;
+	double Trand = foo->GetRandom(Tmax,0);//This is the Inverse Transform sampling method, we will random t that satisfies the above expression.
+	//Condition Checking
+	cout << "\n Check Trandom" << Trand << endl;	
+	cout << "\nDifferential Cross Section Check: " << TMath::Exp(Trand*Bpp) << endl;
+	return (Trand * 1000000); // returning value in MeV�
+//	return std::make_pair(t_value* 1000000, TMath::Exp(Bpp*t_value) );
+}
+
+double R3BQFSGenerator::get_T_Cugnon_PN(double sm, double max)
+{
+	double Tmax = max * 0.000001;
+	double mandels = sm*0.000001;
+	double Mp = 938.727/1000.;
+	double Mn = 939.565/1000.;
+	cout << "\n Proton Mass: " << Mp << "\t Neutron Mass: " << Mn;
+	double Bpp=0;
+	double Bnp=0;
+	double a = 0;
+	
+	double_t Plab = TMath::Sqrt((mandels-pow(Mp-Mn,2))*(mandels-pow(Mp+Mn,2)))/(2*Mp);
+
+	if(Plab<2)
+	{
+		Bpp = 5.5*pow(Plab,8)/(7.7 + pow(Plab,8));
+	}
 	else
 	{
-	        Bpp =(5.5*p8)/(7.7+p8);
+		Bpp = 5.334+0.67*(Plab-2);
 	}
-	
-	//Idea random the value of dif cross until it meets the value of the derivative cross section given in the paper
-	double t_value;
-	bool accept = false;
-	double normalization =sigma*Bpp/(-TMath::Exp(Bpp*Tmax)+1);
-	while(!accept)
+
+	if(Plab<0.225)
 	{
-	//	cout << "\nMandelstam S = " << mandels << "\t Tmax/2 = " << Tmax/2 << "\t Random: " << rr;
-	//	cout << "\nBeam Mass: " << beamMass << "\t Target Mass: " << targetMass << endl;
-		//Generate random value of energy momentum transfer 't'
-		t_value = fRandom.Uniform(Tmax,0);
-	//	cout << "\nt: " << t_value << ", Bpp: " << Bpp << ", p_lab: " << p_lab << endl;		
-		//Calculate the differential cross section according to the paper
-		double dsigma_dt = TMath::Exp(Bpp*t_value);
-	//	cout << "\n dsigma_dt Value: " << dsigma_dt << endl;
-		double error = 0.00001*dsigma_dt;
-		double accept_prob = fRandom.Uniform(0,1);
-		
-	//	cout << "\n Random Prob is: " << accept_prob << endl;
-//		if(accept_prob <(dsigma_dt-error) &&  accept_prob > (dsigma_dt+error))
-		if(accept_prob <= dsigma_dt+error && accept_prob >= dsigma_dt-error)
-		{
-			accept = true;
-		} 
-
+		Bnp = 0;
+	}
+	if(0.225<=Plab && Plab<0.6)
+	{
+		Bnp = 16.53*(Plab-0.225);
+	}
+	if(0.6<= Plab && Plab <1.6)
+	{
+		Bnp = -1.63*Plab+7.16;
+	}
+	else
+	{
+		Bnp = Bpp;
 	}
 
-//	TF1* foo = new TF1("foo", "exp(x*[0])",0 ,Tmax);
+	if(Plab>0.8)
+	{
+		a = 0.64/pow(Plab,2);
+	}
+	else
+	{
+		a = 1;
+	}
 
-//	foo->FixParameter(0, Bpp); //We just want to set the parameter [0], to be Bpp here
 
-//	double Trand = foo->GetRandom(0,Tmax); //This is the Inverse Transform sampling method, we will random t that satisfies the above expression. 
-//	if(Trand <= 0)
-//	{
-//	std::cerr << "Error: Integral of the function is zero or negative" << std::endl;
-//	delete foo;
-//	return 0;
-//	}
-//	return (Trand * 1000000); // returning value in MeV�
-	return t_value* 1000000;
+	TF1 * foo = new TF1("foo","exp(-[0]*x )+[1]*exp([0]*([3]-[2]+x))", 0, Tmax);
+
+	foo->FixParameter(0,Bnp);
+	foo->FixParameter(1,a);
+	foo->FixParameter(2,mandels);
+	foo->FixParameter(3,2*(Mn*Mn+Mp*Mp));
+	double Trand = foo->GetRandom(Tmax,0);
+	return (Trand*1000000); //return the value in MeV
+
 }
 
 ClassImp(R3BQFSGenerator)
