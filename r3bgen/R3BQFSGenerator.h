@@ -72,12 +72,12 @@ class R3BQFSGenerator : public FairGenerator
     void SetIsotropic(bool isotropic);          // Set Isotropic or parametric cross section for proton emission
     void SetMomDistrib(double mom);             // Set Sigma of momentum distribution
     void SetExcitation(double exe);             // Set Excitation energy
-    void SetLightNucleus(double ma, double mi); // Set Incoming outgoing particle mass
+    void SetLightNucleus(double ma, double mi,bool ); // Set Incoming outgoing particle mass
     void SetAddGamma(double energy);
     std::vector<Double_t> GetGamma();
     void Print();
     void SetLorentzBoost(TLorentzVector& gammaMomentum, const TLorentzVector& fragmentMomentum);
-    double GetSM() const{return S;}		//Extract the values of Mandelstam variable to plot the parameterization
+   // double GetSM() const{return S;}		//Extract the values of Mandelstam variable to plot the parameterization
     double get_T_Cugnon(double, double);
     double get_T_Cugnon_PN(double, double);
   protected:
@@ -106,7 +106,7 @@ class R3BQFSGenerator : public FairGenerator
     double get_T(double, double);
    // double get_T_Cugnon(double, double);
     std::pair<double, double> Lorentz(double, double, double, double);
-    void SetValues(double E, int A, double MOM, double exe, double gammaenergy, bool invert, bool iso, bool gamma, bool is_pn);
+    void SetValues(double E, int A, double MOM, double exe, double gammaenergy, bool invert, bool iso, bool gammas_pn);
     FairIon* fIonBeam; // Pointer to the FairIon
     FairIon* fIonFragment; // Pointer to the FairIon
     Int_t fIonBeamPDG;
@@ -114,7 +114,7 @@ class R3BQFSGenerator : public FairGenerator
    // TF1 * foo_Cugnon_DXS;//dSigma/dt parameterization from Cugnon
 	
  private:
-    double S; //Mandelstam variable    
+    //double S; //Mandelstam variable    
     ClassDef(R3BQFSGenerator, 1);
 };
 

@@ -43,7 +43,7 @@ using namespace std;
 
 R3BQFSGenerator::R3BQFSGenerator()
 {
-	this->SetValues(0, 0, 0, 0, 0, false, false, false, false);
+	this->SetValues(0, 0, 0, 0, 0, false, false, false);
 //	T_LIMIT = 10000000.;
 	fRandom.SetSeed(0);
 	//    GammaEnergy = 0;
@@ -104,8 +104,9 @@ void R3BQFSGenerator::SetHeavyFragment(int A, int Z)
 
 ///////////////////////////////////////Kai's Modification/////////////////////////////////////
 
-void R3BQFSGenerator::SetLightNucleus(double ma, double mi)
+void R3BQFSGenerator::SetLightNucleus(double ma, double mi, bool is_pn)
 {
+	IS_PN = is_pn;
 	Ma = ma;
 	Mi = mi;
 	return;
@@ -381,9 +382,15 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 		LOG(debug) << "R3BQFSGenerator: Sending p2pevt: P1 : " << P1L.Px() << " , " << P1L.Py() << " , "
 			<< P1L.Pz() << "\n P2 : " << P2L.Px() << " , " << P2L.Py() << " , " << P2L.Pz() << " ";
 		primGen->AddTrack(2212, P1L.Px() / 1000., P1L.Py() / 1000., P1L.Pz() / 1000., 0, 0, 0);
-		if(!is
-		primGen->AddTrack(2212, P2L.Px() / 1000., P2L.Py() / 1000., P2L.Pz() / 1000., 0, 0, 0);
-		
+		if(IS_PN)
+		{
+		primGen->AddTrack(2112, P2L.Px() / 1000., P2L.Py() / 1000., P2L.Pz() / 1000., 0, 0, 0); //for (p,np)
+		}
+		else
+		{
+		primGen->AddTrack(2212, P2L.Px()/1000., P2L.Py()/1000., P2L.Pz()/1000., 0, 0, 0); //for (p,2p)
+		}	
+	
 		TParticlePDG* thisPart = TDatabasePDG::Instance()->GetParticle(fIonFragment->GetName());
 		if (!thisPart)
 			LOG(fatal) << "FairIonGenerator: Ion " << fIonFragment->GetName() << " not found in database!";
@@ -395,7 +402,8 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 
 		auto TotalEnergy = sqrt(PB.Mag2() + MB*MB);
 		//		primGen->AddTrack(fIonFragmentPDG, PB.Px()/1000., PB.Py()/1000., PB.Pz()/1000.,0.,0.,0.,-1,true, TotalEnergy/1000.);
-		primGen->AddTrack(fIonFragmentPDG, PB.Px()/1000., PB.Py()/1000., PB.Pz()/1000.,0.,0.,0.,-1,true, TotalEnergy/1000.);
+		//primGen->AddTrack(fIonFragmentPDG, PB.Px()/1000., PB.Py()/1000., PB.Pz()/1000.,0.,0.,0.,-1,true, TotalEnergy/1000.);
+		primGen->AddTrack(fIonFragmentPDG, PB.Px()/1000., PB.Py()/1000., PB.Pz()/1000.,0.,0.,0.);
 
 		if(AddGamma && LVg!= nullptr  )
 		{
@@ -405,7 +413,8 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 			SetLorentzBoost(*LVg, LVfragment);		
 			
 			//	primGen->AddTrack(22,Gamma_vec[0], Gamma_vec[1], Gamma_vec[2], 0., 0., 0., -1, true, Gamma_vec[3]); 
-			primGen->AddTrack(22, LVg->Px()/1000., LVg->Py()/1000., LVg->Pz()/1000.,0.,0.,0., -1, true, LVg->E());
+			//primGen->AddTrack(22, LVg->Px()/1000., LVg->Py()/1000., LVg->Pz()/1000.,0.,0.,0., -1, true, LVg->E());
+			primGen->AddTrack(22, LVg->Px()/1000., LVg->Py()/1000., LVg->Pz()/1000.,0.,0.,0.);
 		}
 
 		//Clearing Memories
@@ -427,7 +436,7 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 	return kTRUE;
 }
 
-void R3BQFSGenerator::SetValues(double E, int A, double MOM, double exe, double gammaenergy , bool invert, bool iso, bool gamma, bool is_pn)
+void R3BQFSGenerator::SetValues(double E, int A, double MOM, double exe, double gammaenergy , bool invert, bool iso, bool gamma)
 {
 	ENERGY = E;
 	MOM_SIGMA = MOM;
@@ -436,13 +445,21 @@ void R3BQFSGenerator::SetValues(double E, int A, double MOM, double exe, double 
 //	MA = A * UNIT;
 	MB =(A - 1) * UNIT + exe;
 //	MB = (A - 1) * UNIT;
-	Ma = 938.727;
+//	IS_PN = is_pn;
+	if(IS_PN)
+	{
+		Ma = 939.565;
+	}
+	else
+	{
+		Ma = 938.727;
+	}
 	Mi = 938.727;
 //	T_LIMIT = 10000000.;
 	INVERSE = invert;
 	ISOTROPIC = iso;
 	AddGamma = gamma;
-	IS_PN = is_pn;
+//	IS_PN = is_pn;
 	GammaEnergy = gammaenergy;
 	return;
 }
@@ -518,13 +535,13 @@ CM_values R3BQFSGenerator::CENMASS(double s, double m2off, double m1, double m2,
 	// Generate random momentum transfer for this kinematical case
 	if (!isotropic)
 	{
-		if(!is_pn)
+		if(!IS_PN)
 		{
 			t = R3BQFSGenerator::get_T_Cugnon(s, tmax);
 		}
 		else
 		{
-			t = R3BQFSGenerator::gat_T_Cugnon_PN(s, tmax);
+			t = R3BQFSGenerator::get_T_Cugnon_PN(s, tmax);
 		}
 	} // Using parameterized cross sections
 	else
