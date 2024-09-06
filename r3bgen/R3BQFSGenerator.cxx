@@ -148,7 +148,7 @@ std::vector<Double_t> R3BQFSGenerator::GetGamma()
 	Double_t px =energy * TMath::Sin(theta)*TMath::Cos(phi);
 	Double_t py =energy * TMath::Sin(theta)*TMath::Sin(phi);
 	Double_t pz =energy * TMath::Cos(theta);
-	SetExcitation(energy);
+	//SetExcitation(energy);
 	return {px, py, pz, energy};
 }
 
