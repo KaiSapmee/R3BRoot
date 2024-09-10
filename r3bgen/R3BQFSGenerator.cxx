@@ -114,7 +114,7 @@ void R3BQFSGenerator::SetLightNucleus(double ma, double mi, bool is_pn)
 
 void R3BQFSGenerator::SetExcitation(double exe)
 {
-	MB += exe/1000.;
+	MB += exe;
 	return;
 }
 
@@ -395,7 +395,7 @@ Bool_t R3BQFSGenerator::ReadEvent(FairPrimaryGenerator* primGen)
 		if (!thisPart)
 			LOG(fatal) << "FairIonGenerator: Ion " << fIonFragment->GetName() << " not found in database!";
 		fIonFragmentPDG = thisPart->PdgCode();
-		cout << "\nProjectile PDG:" << fIonFragmentPDG << "\n";
+		//cout << "\nFrgagment PDG:" << fIonFragmentPDG << "\n";
 
 
 		//////////////////////////////Kai's Modification//////////////////////////
